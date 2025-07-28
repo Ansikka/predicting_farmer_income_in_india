@@ -114,6 +114,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
+from custom_transformer import CustomImputer  # or whatever the class name is
 
 # Load models
 xgb = joblib.load("xgb.pkl")
