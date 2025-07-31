@@ -1,16 +1,19 @@
+# farmer Yuvan_code.py
 
 import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
 import matplotlib.pyplot as plt
-# Load models and preprocessor
+from sklearn.metrics import mean_absolute_percentage_error 
+
+# Load models and preprocessor (all files are uploaded in this folder as well)
 preprocess = joblib.load("preprocess.pkl")
 xgb = joblib.load("xgb.pkl")
 lgb = joblib.load("lgb.pkl")
 meta = joblib.load("meta.pkl")
 
-# Streamlit page config for showing result and website
+#       -------------------------------      Streamlit page config for showing result and website    ----------------------
 st.set_page_config(page_title="Farmer Income Predictor")
 st.title("🌾 Farmer Income Predictor")
 st.write("Enter farmer details manually or upload a CSV file for prediction.")
@@ -26,7 +29,7 @@ expected_columns = [
     'Prev_Income_1', 'Prev_Income_2', 'Prev_Income_3', 'State', 'Crop'
 ]
 
-# --- CSV Upload Section ---
+# ------------------------- CSV Upload Section ------------------------------------
 uploaded_file = st.file_uploader("📁 Upload CSV with Farmer Data", type=["csv"])
 if uploaded_file:
     input_df = pd.read_csv(uploaded_file)
@@ -34,7 +37,67 @@ if uploaded_file:
     st.dataframe(input_df)
 
     if st.button("🔍 Predict from CSV"):
+        # ----------------------------  Backup Actual_Income if present --------------------------------------
+        actual_income_present = 'Actual_Income' in input_df.columns
+        if actual_income_present:
+            actual_income_values = pd.to_numeric(input_df['Actual_Income'], errors='coerce')
+
         # Fill missing columns
+        for col in expected_columns:
+            if col not in input_df.columns:
+                input_df[col] = 'Unknown' if col in ['State', 'Crop'] else 0
+
+        input_df = input_df[expected_columns]
+
+        try:
+            # Preprocessing
+            X_prep = preprocess.transform(input_df)
+            xgb_pred = xgb.predict(X_prep)
+            lgb_pred = lgb.predict(X_prep)
+            ensemble_input = np.vstack([xgb_pred, lgb_pred]).T
+            final_pred = meta.predict(ensemble_input)
+
+            # Add predictions
+            input_df['Predicted_Annual_Income'] = final_pred.astype(int)
+
+            # Add back Actual_Income if available
+            if actual_income_present:
+                input_df['Actual_Income'] = actual_income_values
+
+            st.success(" Prediction completed.")
+            st.dataframe(input_df[['State', 'Crop', 'Farm_Size', 'Predicted_Annual_Income']])
+            st.download_button("⬇️ Download Results", input_df.to_csv(index=False), "predicted_incomes.csv", key="csv_download_button")
+
+            # -------------------------------------------✅ MAPE and Chart  ---------------------------------------------------
+            if actual_income_present:
+                y_true = actual_income_values.values
+                y_pred = final_pred
+
+                if len(y_true) != len(y_pred):
+                    st.warning(f"⚠️ MAPE skipped: Actual ({len(y_true)}) and Predicted ({len(y_pred)}) row count mismatch.")
+                else:
+                    mape = mean_absolute_percentage_error(y_true, y_pred) * 100
+                    st.metric(" MAPE (Mean Absolute Percentage Error)", f"{mape:.2f} %")
+
+                    fig, ax = plt.subplots(figsize=(10, 5))
+                    indices = np.arange(len(y_true))
+                    bar_width = 0.35
+
+                    ax.bar(indices, y_true, width=bar_width, label='Actual Income', color='skyblue')
+                    ax.bar(indices + bar_width, y_pred, width=bar_width, label='Predicted Income', color='orange')
+                    ax.set_xlabel('Farmer Index')
+                    ax.set_ylabel('Annual Income (₹)')
+                    ax.set_title('Actual vs Predicted Farmer Income')
+                    ax.legend()
+                    st.pyplot(fig)
+            else:
+                st.info("ℹ️ Add an 'Actual_Income' column in your CSV to calculate MAPE and see visual comparison.")
+
+        except Exception as e:
+            st.error(f" Prediction Failed: {str(e)}")
+
+
+        # ---------------------------------- Fill missing columns --------------------------------------
         for col in expected_columns:
             if col not in input_df.columns:
                 input_df[col] = 'Unknown' if col in ['State', 'Crop'] else 0
@@ -46,11 +109,11 @@ if uploaded_file:
             missing_cols = set(loaded_columns) - set(input_df.columns)
             extra_cols = set(input_df.columns) - set(loaded_columns)
             if missing_cols:
-                st.error(f"❌ Missing columns in CSV: {missing_cols}")
+                st.error(f" Missing columns in CSV: {missing_cols}")
             if extra_cols:
-                st.warning(f"⚠️ Extra columns in CSV: {extra_cols}")
+                st.warning(f" Extra columns in CSV: {extra_cols}")
 
-            # Predict
+            # Predicting
             X_prep = preprocess.transform(input_df)
             xgb_pred = xgb.predict(X_prep)
             lgb_pred = lgb.predict(X_prep)
@@ -58,16 +121,16 @@ if uploaded_file:
             final_pred = meta.predict(ensemble_input)
 
             input_df['Predicted_Annual_Income'] = final_pred.astype(int)
-            st.success("✅ Prediction completed.")
+            st.success(" Prediction completed.")
             st.dataframe(input_df[['State', 'Crop', 'Farm_Size', 'Predicted_Annual_Income']])
-            st.download_button("⬇️ Download Results", input_df.to_csv(index=False), "predicted_incomes.csv")
+            st.download_button("⬇ Download Results", input_df.to_csv(index=False), "predicted_incomes.csv")
         except Exception as e:
-            st.error(f"❌ Prediction Failed: {str(e)}")
+            st.error(f" Prediction Failed: {str(e)}")
 
-# --- Manual Input Section ---
+# ---------------------------------- Manual Input Section ---------------------------------------
 
 else:
-    st.subheader("📝 Manual Input")
+    st.subheader(" Manual Input")
 
     states = ['Punjab', 'Maharashtra', 'UP', 'Bihar', 'Tamil Nadu', 'MP', 'Rajasthan']
     crops = ['Rice', 'Wheat', 'Pulses', 'Cotton', 'Maize']
@@ -93,7 +156,7 @@ else:
         prev1 = st.number_input("Previous Income 1", 0.0, 1e6, 50000.0)
         prev2 = st.number_input("Previous Income 2", 0.0, 1e6, 52000.0)
         prev3 = st.number_input("Previous Income 3", 0.0, 1e6, 53000.0)
-        submit = st.form_submit_button("🔍 Predict Income")
+        submit = st.form_submit_button(" Predict Income")
 
     if submit:
         input_df = pd.DataFrame([{
@@ -137,20 +200,20 @@ else:
             ensemble_input = np.vstack([xgb_pred, lgb_pred]).T
             final_pred = meta.predict(ensemble_input)
 
-            st.success(f"✅ Predicted Annual Income: ₹ {final_pred[0]:,.2f}")
+            st.success(f" Predicted Annual Income: ₹ {final_pred[0]:,.2f}")
         except Exception as e:
-            st.error(f"❌ Prediction Failed: {str(e)}")
+            st.error(f" Prediction Failed: {str(e)}")
 
     #            ****************** streaming on STREAMLIT APP ***********************
 
-    st.subheader("📈 Income Distribution of Farmers")
+    st.subheader(" Income Distribution of Farmers")
 
-# Set income threshold
+# Setting income threshold
 income_threshold = 100000
 
-# Only plot if prediction column exists and has multiple entries
+# Only ploting if prediction column exists and has multiple entries
 if 'input_df' in locals() and 'Predicted_Annual_Income' in input_df.columns and len(input_df) > 1:
-    # Create color list
+    # Creating color list
     colors = ['red' if income < income_threshold else 'green' for income in input_df['Predicted_Annual_Income']]
 
     # Plot
@@ -163,7 +226,3 @@ if 'input_df' in locals() and 'Predicted_Annual_Income' in input_df.columns and 
     ax.legend()
 
     st.pyplot(fig)
-elif 'Predicted_Annual_Income' in locals():
-    st.info("📌 Only one prediction available. Bar chart is shown for multiple predictions.")
-else:
-    st.warning("⚠️ No predicted income data available to plot.")
