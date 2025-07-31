@@ -1,4 +1,4 @@
-🌾 Farmer Income Prediction in India
+Farmer Income Prediction in India
 A real-world machine learning project built to predict the income of Indian farmers using demographic, agricultural, 
 and socio-economic data. This app provides insights that could help in policy design, financial planning, and risk assessment for rural households.
 
@@ -6,9 +6,9 @@ and socio-economic data. This app provides insights that could help in policy de
 Indian farmers face volatile income due to unpredictable weather, fluctuating market prices, and limited access to modern agricultural infrastructure. This Streamlit-powered web app leverages machine learning to predict a farmer's annual income based on several input parameters — giving decision-makers a data-driven perspective on rural economics.
 
 🛠 Tech Stack
-🐍 Python 3.12+
+   Python 3.12+
 
-🧠 Scikit-learn
+   Scikit-learn
 
 📦 Joblib
 
@@ -21,12 +21,12 @@ Indian farmers face volatile income due to unpredictable weather, fluctuating ma
 ☁️ Deployed on: Streamlit Cloud
 
 ⚙️ Features
-✅ Upload farmer data (CSV) for batch prediction
-✅ View predicted income instantly
-✅ Clean, responsive UI with contextual insights
-✅ Custom-built preprocessing pipeline with CustomImputer
-✅ Re-trainable model architecture (optional)
-✅ Lightweight and deployable under GitHub’s file size limits
+ Upload farmer data (CSV) for batch prediction
+ View predicted income instantly
+ Clean, responsive UI with contextual insights
+ Custom-built preprocessing pipeline with CustomImputer
+ Re-trainable model architecture (optional)
+ Lightweight and deployable under GitHub’s file size limits
 
 📁 Project Structure
 bash
